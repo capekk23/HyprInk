@@ -41,8 +41,9 @@ Target workflow:
 - Click empty desktop overlay space to create a text note
 - Drag notes by grabbing inside their rectangle
 - Double-click notes to edit
+- Delete notes or full strokes with the configured delete button
 - Persistent JSON storage per active Hyprland workspace
-- Configurable background, layer, stylus, and note styling
+- Configurable background, layer, controls, stylus, and note styling
 
 ## Planned Features
 
@@ -88,32 +89,34 @@ For the current local checkout, the command used by Hyprland is:
 Initial config lives in `Project.conf`.
 
 ```conf
-[general]
-toggle_key = SUPER+N
-storage_path = ~/.local/share/hyprink
+[app]
+AppToggle = SUPER+N
+StoragePath = ~/.local/share/hyprink
+Layer = bottom
 
-[background]
-mode = transparent
-black_color = #000000
-blur = true
+[appearance]
+BackgroundMode = transparent
+BlackBackgroundColor = #000000
 
-[window]
-layer = bottom
+[controls]
+DrawButton = left
+DeleteButton = middle
+DeleteDistance = 14
 
-[stylus]
-size = 4
-color = #ff3355
+[drawing]
+StylusSize = 4
+StylusColor = #ff3355
 
 [notes]
-font = monospace
-font_size = 16
-text_color = #ffffff
-background_color = #00000099
-border_color = #ffffffcc
-border_width = 1
-padding = 8
-width = 260
-min_height = 64
+Font = monospace
+FontSize = 16
+TextColor = #ffffff
+BackgroundColor = #00000099
+BorderColor = #ffffffcc
+BorderWidth = 1
+Padding = 8
+Width = 260
+MinHeight = 64
 ```
 
 ## Status

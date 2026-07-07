@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cerrno>
 #include <cmath>
+#include <cctype>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
@@ -37,10 +38,14 @@ struct Color {
 };
 
 struct Config {
+  std::string app_toggle = "SUPER+N";
   std::string storage_path = "~/.local/share/hyprink";
   std::string background_mode = "transparent";
   Color black_color{0.0, 0.0, 0.0, 1.0};
   std::string layer = "bottom";
+  unsigned int draw_button = 1;
+  unsigned int delete_button = 2;
+  double delete_distance = 14.0;
   int stylus_size = 4;
   Color stylus_color{1.0, 0.2, 0.33, 1.0};
   std::string font = "monospace";
@@ -170,6 +175,31 @@ static int parse_int(const std::string& raw, int fallback) {
   }
 }
 
+static double parse_double(const std::string& raw, double fallback) {
+  try {
+    return std::stod(trim(raw));
+  } catch (...) {
+    return fallback;
+  }
+}
+
+static unsigned int parse_button(const std::string& raw, unsigned int fallback) {
+  const std::string value = lower(trim(raw));
+  if (value == "left" || value == "lmb" || value == "mouse1") {
+    return 1;
+  }
+  if (value == "middle" || value == "mmb" || value == "mouse2") {
+    return 2;
+  }
+  if (value == "right" || value == "rmb" || value == "mouse3") {
+    return 3;
+  }
+  if (value.rfind("mouse", 0) == 0) {
+    return static_cast<unsigned int>(std::max(1, parse_int(value.substr(5), static_cast<int>(fallback))));
+  }
+  return static_cast<unsigned int>(std::max(1, parse_int(value, static_cast<int>(fallback))));
+}
+
 static std::string config_value(
   const std::map<std::string, std::map<std::string, std::string>>& data,
   const std::string& section,
@@ -219,12 +249,8 @@ static Config load_config(const std::string& explicit_path) {
   std::string line;
 
   while (std::getline(file, line)) {
-    const auto comment = line.find('#');
-    if (comment != std::string::npos) {
-      line = line.substr(0, comment);
-    }
     line = trim(line);
-    if (line.empty()) {
+    if (line.empty() || line.front() == '#') {
       continue;
     }
     if (line.front() == '[' && line.back() == ']') {
@@ -238,21 +264,38 @@ static Config load_config(const std::string& explicit_path) {
     data[section][lower(trim(line.substr(0, equals)))] = trim(line.substr(equals + 1));
   }
 
-  config.storage_path = config_value(data, "general", "storage_path", config.storage_path);
-  config.background_mode = lower(config_value(data, "background", "mode", config.background_mode));
-  config.black_color = parse_color(config_value(data, "background", "black_color", ""), config.black_color);
-  config.layer = lower(config_value(data, "window", "layer", config.layer));
-  config.stylus_size = parse_int(config_value(data, "stylus", "size", ""), config.stylus_size);
-  config.stylus_color = parse_color(config_value(data, "stylus", "color", ""), config.stylus_color);
+  config.app_toggle = config_value(data, "app", "apptoggle",
+    config_value(data, "general", "toggle_key", config.app_toggle));
+  config.storage_path = config_value(data, "app", "storagepath",
+    config_value(data, "general", "storage_path", config.storage_path));
+  config.background_mode = lower(config_value(data, "appearance", "backgroundmode",
+    config_value(data, "background", "mode", config.background_mode)));
+  config.black_color = parse_color(config_value(data, "appearance", "blackbackgroundcolor",
+    config_value(data, "background", "black_color", "")), config.black_color);
+  config.layer = lower(config_value(data, "app", "layer",
+    config_value(data, "window", "layer", config.layer)));
+  config.draw_button = parse_button(config_value(data, "controls", "drawbutton", ""), config.draw_button);
+  config.delete_button = parse_button(config_value(data, "controls", "deletebutton", ""), config.delete_button);
+  config.delete_distance = parse_double(config_value(data, "controls", "deletedistance", ""), config.delete_distance);
+  config.stylus_size = parse_int(config_value(data, "drawing", "stylussize",
+    config_value(data, "stylus", "size", "")), config.stylus_size);
+  config.stylus_color = parse_color(config_value(data, "drawing", "styluscolor",
+    config_value(data, "stylus", "color", "")), config.stylus_color);
   config.font = config_value(data, "notes", "font", config.font);
-  config.font_size = parse_int(config_value(data, "notes", "font_size", ""), config.font_size);
-  config.text_color = parse_color(config_value(data, "notes", "text_color", ""), config.text_color);
-  config.note_background = parse_color(config_value(data, "notes", "background_color", ""), config.note_background);
-  config.note_border = parse_color(config_value(data, "notes", "border_color", ""), config.note_border);
-  config.border_width = parse_int(config_value(data, "notes", "border_width", ""), config.border_width);
+  config.font_size = parse_int(config_value(data, "notes", "fontsize",
+    config_value(data, "notes", "font_size", "")), config.font_size);
+  config.text_color = parse_color(config_value(data, "notes", "textcolor",
+    config_value(data, "notes", "text_color", "")), config.text_color);
+  config.note_background = parse_color(config_value(data, "notes", "backgroundcolor",
+    config_value(data, "notes", "background_color", "")), config.note_background);
+  config.note_border = parse_color(config_value(data, "notes", "bordercolor",
+    config_value(data, "notes", "border_color", "")), config.note_border);
+  config.border_width = parse_int(config_value(data, "notes", "borderwidth",
+    config_value(data, "notes", "border_width", "")), config.border_width);
   config.padding = parse_int(config_value(data, "notes", "padding", ""), config.padding);
   config.note_width = parse_int(config_value(data, "notes", "width", ""), config.note_width);
-  config.note_min_height = parse_int(config_value(data, "notes", "min_height", ""), config.note_min_height);
+  config.note_min_height = parse_int(config_value(data, "notes", "minheight",
+    config_value(data, "notes", "min_height", "")), config.note_min_height);
 
   config.stylus_size = std::max(1, config.stylus_size);
   config.font_size = std::max(8, config.font_size);
@@ -260,6 +303,7 @@ static Config load_config(const std::string& explicit_path) {
   config.padding = std::max(0, config.padding);
   config.note_width = std::max(80, config.note_width);
   config.note_min_height = std::max(32, config.note_min_height);
+  config.delete_distance = std::max(1.0, config.delete_distance);
   return config;
 }
 
@@ -416,7 +460,12 @@ protected:
   }
 
   bool on_button_press_event(GdkEventButton* event) override {
-    if (event->button != 1) {
+    if (event->button == config_.delete_button) {
+      delete_at(event->x, event->y);
+      return true;
+    }
+
+    if (event->button != config_.draw_button) {
       return false;
     }
 
@@ -480,7 +529,7 @@ protected:
   }
 
   bool on_button_release_event(GdkEventButton* event) override {
-    if (event->button != 1) {
+    if (event->button != config_.draw_button) {
       return false;
     }
 
@@ -663,6 +712,54 @@ private:
       }
     }
     return -1;
+  }
+
+  static double point_to_segment_distance(Point p, Point a, Point b) {
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double length_squared = dx * dx + dy * dy;
+    if (length_squared == 0.0) {
+      return std::hypot(p.x - a.x, p.y - a.y);
+    }
+
+    const double t = std::clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / length_squared, 0.0, 1.0);
+    const Point projection{a.x + t * dx, a.y + t * dy};
+    return std::hypot(p.x - projection.x, p.y - projection.y);
+  }
+
+  int stroke_at(double x, double y) const {
+    const Point point{x, y};
+    for (int i = static_cast<int>(strokes_.size()) - 1; i >= 0; --i) {
+      const auto& stroke = strokes_[i];
+      if (stroke.points.size() < 2) {
+        continue;
+      }
+
+      const double threshold = config_.delete_distance + stroke.size / 2.0;
+      for (size_t j = 1; j < stroke.points.size(); ++j) {
+        if (point_to_segment_distance(point, stroke.points[j - 1], stroke.points[j]) <= threshold) {
+          return i;
+        }
+      }
+    }
+
+    return -1;
+  }
+
+  void delete_at(double x, double y) {
+    if (const int note = note_at(x, y); note >= 0) {
+      notes_.erase(notes_.begin() + note);
+      editing_note_ = -1;
+      save();
+      queue_draw();
+      return;
+    }
+
+    if (const int stroke = stroke_at(x, y); stroke >= 0) {
+      strokes_.erase(strokes_.begin() + stroke);
+      save();
+      queue_draw();
+    }
   }
 
   void begin_edit(int index) {
