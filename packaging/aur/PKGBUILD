@@ -1,0 +1,24 @@
+# Maintainer: HyprInk contributors
+
+pkgname=hyprink
+pkgver=1.0
+pkgrel=1
+pkgdesc='Persistent desktop notes and scribbles for Hyprland'
+arch=('x86_64')
+url='https://github.com/capekk23/HyprInk'
+license=('MIT')
+depends=('gtkmm3' 'gtk-layer-shell' 'jsoncpp')
+makedepends=('cmake')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cmake -S "HyprInk-${pkgver}" -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build build
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build
+}
