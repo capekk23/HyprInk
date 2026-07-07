@@ -392,7 +392,7 @@ public:
     gtk_layer_init_for_window(gobj());
     gtk_layer_set_namespace(gobj(), "hyprink");
     gtk_layer_set_layer(gobj(), layer_from_config());
-    gtk_layer_set_keyboard_mode(gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+    gtk_layer_set_keyboard_mode(gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
     gtk_layer_set_exclusive_zone(gobj(), -1);
     gtk_layer_set_anchor(gobj(), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
     gtk_layer_set_anchor(gobj(), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
@@ -406,6 +406,7 @@ public:
     Glib::signal_timeout().connect([this] {
       if (is_visible()) {
         current_workspace_key_ = active_workspace_key();
+        update_input_mode();
         cursor_visible_ = !cursor_visible_;
         if (editing_note_ >= 0) {
           queue_draw();
@@ -418,16 +419,15 @@ public:
 
   void toggle() {
     if (is_visible()) {
-      save();
+      finish_edit();
       hide();
       return;
     }
 
     current_workspace_key_ = active_workspace_key();
     activation_workspace_key_ = current_workspace_key_;
+    update_input_mode();
     show_all();
-    present();
-    grab_focus();
   }
 
 protected:
@@ -488,7 +488,6 @@ protected:
       return false;
     }
 
-    grab_focus();
     const int hit = note_at(event->x, event->y);
 
     if (event->type == GDK_2BUTTON_PRESS) {
@@ -603,7 +602,6 @@ protected:
       clamp_note(note);
       notes_.push_back(note);
       begin_edit(static_cast<int>(notes_.size() - 1));
-      save();
     }
 
     queue_draw();
@@ -617,6 +615,7 @@ protected:
 
     if (editing_note_ < 0 || editing_note_ >= static_cast<int>(notes_.size())) {
       if ((event->state & GDK_CONTROL_MASK) && event->keyval == GDK_KEY_q) {
+        finish_edit();
         hide();
         return true;
       }
@@ -669,6 +668,7 @@ protected:
 
   bool on_delete_event(GdkEventAny* event) override {
     (void)event;
+    finish_edit();
     save();
     hide();
     return true;
@@ -824,12 +824,16 @@ private:
   void begin_edit(int index) {
     editing_note_ = index;
     cursor_visible_ = true;
+    gtk_layer_set_keyboard_mode(gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+    grab_focus();
     update_note_size(notes_[index]);
     queue_draw();
   }
 
   void finish_edit() {
+    remove_empty_notes();
     editing_note_ = -1;
+    gtk_layer_set_keyboard_mode(gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
     save();
     queue_draw();
   }
@@ -844,6 +848,21 @@ private:
   bool can_edit_current_workspace() {
     current_workspace_key_ = active_workspace_key();
     return current_workspace_key_ == activation_workspace_key_;
+  }
+
+  void update_input_mode() {
+    const bool active = current_workspace_key_ == activation_workspace_key_;
+    if (active) {
+      gtk_widget_input_shape_combine_region(GTK_WIDGET(gobj()), nullptr);
+    } else {
+      cairo_region_t* empty = cairo_region_create();
+      gtk_widget_input_shape_combine_region(GTK_WIDGET(gobj()), empty);
+      cairo_region_destroy(empty);
+      if (editing_note_ >= 0) {
+        finish_edit();
+      }
+      cancel_pointer_actions();
+    }
   }
 
   void cancel_pointer_actions() {
@@ -910,6 +929,8 @@ private:
       return;
     }
 
+    remove_empty_notes();
+
     std::error_code ec;
     fs::create_directories(storage_dir_, ec);
     if (ec) {
@@ -947,6 +968,31 @@ private:
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "  ";
     file << Json::writeString(builder, root);
+  }
+
+  void remove_empty_notes() {
+    for (int i = static_cast<int>(notes_.size()) - 1; i >= 0; --i) {
+      if (!trim(notes_[i].text).empty()) {
+        continue;
+      }
+
+      notes_.erase(notes_.begin() + i);
+      if (editing_note_ == i) {
+        editing_note_ = -1;
+      } else if (editing_note_ > i) {
+        --editing_note_;
+      }
+      if (dragging_note_ == i) {
+        dragging_note_ = -1;
+      } else if (dragging_note_ > i) {
+        --dragging_note_;
+      }
+      if (resizing_note_ == i) {
+        resizing_note_ = -1;
+      } else if (resizing_note_ > i) {
+        --resizing_note_;
+      }
+    }
   }
 
   Config config_;
