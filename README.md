@@ -13,10 +13,12 @@ This keeps HyprInk away from Hyprland plugin ABI breakage and lets the shortcut 
 Example bind:
 
 ```lua
-hl.bind("SUPER + N", hl.dsp.exec_cmd("hyprink --toggle"), {
+hl.bind("SUPER + N", hl.dsp.exec_cmd("/home/karel/Documents/Github/HyprInk/build/hyprink --toggle"), {
   description = "Toggle HyprInk"
 })
 ```
+
+See `examples/hyprland.lua`.
 
 ## Goal
 
@@ -74,6 +76,12 @@ Run:
 ```
 
 Press `Esc` or `Ctrl+Enter` to finish editing a note.
+
+For the current local checkout, the command used by Hyprland is:
+
+```sh
+/home/karel/Documents/Github/HyprInk/build/hyprink --toggle
+```
 
 ## Config
 
