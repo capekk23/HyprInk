@@ -45,9 +45,10 @@ struct Config {
   std::string layer = "bottom";
   unsigned int draw_button = 1;
   unsigned int delete_button = 2;
+  unsigned int resize_button = 3;
   double delete_distance = 14.0;
   int stylus_size = 4;
-  Color stylus_color{1.0, 0.2, 0.33, 1.0};
+  Color stylus_color{1.0, 1.0, 1.0, 1.0};
   std::string font = "monospace";
   int font_size = 16;
   Color text_color{1.0, 1.0, 1.0, 1.0};
@@ -276,6 +277,7 @@ static Config load_config(const std::string& explicit_path) {
     config_value(data, "window", "layer", config.layer)));
   config.draw_button = parse_button(config_value(data, "controls", "drawbutton", ""), config.draw_button);
   config.delete_button = parse_button(config_value(data, "controls", "deletebutton", ""), config.delete_button);
+  config.resize_button = parse_button(config_value(data, "controls", "resizebutton", ""), config.resize_button);
   config.delete_distance = parse_double(config_value(data, "controls", "deletedistance", ""), config.delete_distance);
   config.stylus_size = parse_int(config_value(data, "drawing", "stylussize",
     config_value(data, "stylus", "size", "")), config.stylus_size);
@@ -404,6 +406,10 @@ public:
     Glib::signal_timeout().connect([this] {
       if (is_visible()) {
         current_workspace_key_ = active_workspace_key();
+        cursor_visible_ = !cursor_visible_;
+        if (editing_note_ >= 0) {
+          queue_draw();
+        }
       }
       return true;
     }, 500);
@@ -464,6 +470,20 @@ protected:
       return true;
     }
 
+    if (event->button == config_.resize_button) {
+      const int hit = note_at(event->x, event->y);
+      if (hit >= 0) {
+        editing_note_ = -1;
+        resizing_note_ = hit;
+        resize_start_x_ = event->x;
+        resize_start_y_ = event->y;
+        resize_start_w_ = notes_[hit].w;
+        resize_start_h_ = notes_[hit].h;
+        return true;
+      }
+      return false;
+    }
+
     if (event->button != config_.draw_button) {
       return false;
     }
@@ -513,6 +533,15 @@ protected:
       return true;
     }
 
+    if (resizing_note_ >= 0) {
+      auto& note = notes_[resizing_note_];
+      note.w = std::max<double>(config_.note_width / 2.0, resize_start_w_ + event->x - resize_start_x_);
+      note.h = std::max<double>(config_.note_min_height, resize_start_h_ + event->y - resize_start_y_);
+      clamp_note(note);
+      queue_draw();
+      return true;
+    }
+
     if (!drawing_) {
       return false;
     }
@@ -536,6 +565,15 @@ protected:
     if (!can_edit_current_workspace()) {
       cancel_pointer_actions();
       return true;
+    }
+
+    if (event->button == config_.resize_button) {
+      if (resizing_note_ >= 0) {
+        resizing_note_ = -1;
+        save();
+        return true;
+      }
+      return false;
     }
 
     if (event->button != config_.draw_button) {
@@ -676,7 +714,15 @@ private:
     cr->set_line_width(editing ? std::max(2, config_.border_width + 1) : config_.border_width);
     cr->stroke();
 
-    auto layout = create_pango_layout(note.text.empty() && editing ? "|" : note.text);
+    std::string display_text = note.text;
+    if (editing && cursor_visible_) {
+      display_text += "|";
+    }
+    if (display_text.empty()) {
+      display_text = " ";
+    }
+
+    auto layout = create_pango_layout(display_text);
     Pango::FontDescription font;
     font.set_family(config_.font);
     font.set_absolute_size(config_.font_size * PANGO_SCALE);
@@ -713,7 +759,7 @@ private:
     int text_w = 0;
     int text_h = 0;
     layout->get_pixel_size(text_w, text_h);
-    note.h = std::max<double>(config_.note_min_height, text_h + config_.padding * 2);
+    note.h = std::max<double>(note.h, std::max<double>(config_.note_min_height, text_h + config_.padding * 2));
   }
 
   int note_at(double x, double y) {
@@ -777,6 +823,7 @@ private:
 
   void begin_edit(int index) {
     editing_note_ = index;
+    cursor_visible_ = true;
     update_note_size(notes_[index]);
     queue_draw();
   }
@@ -802,6 +849,7 @@ private:
   void cancel_pointer_actions() {
     drawing_ = false;
     dragging_note_ = -1;
+    resizing_note_ = -1;
   }
 
   fs::path state_file() const {
@@ -919,9 +967,15 @@ private:
   double last_y_ = 0.0;
 
   int dragging_note_ = -1;
+  int resizing_note_ = -1;
   int editing_note_ = -1;
+  bool cursor_visible_ = true;
   double drag_dx_ = 0.0;
   double drag_dy_ = 0.0;
+  double resize_start_x_ = 0.0;
+  double resize_start_y_ = 0.0;
+  double resize_start_w_ = 0.0;
+  double resize_start_h_ = 0.0;
 };
 
 class IpcServer {

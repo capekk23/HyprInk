@@ -40,7 +40,9 @@ Target workflow:
 - Mouse scribbling with left click + drag
 - Click empty desktop overlay space to create a text note
 - Drag notes by grabbing inside their rectangle
+- Resize note boundaries with the configured resize button
 - Double-click notes to edit
+- Blinking `|` cursor while editing notes
 - Delete notes or full strokes with the configured delete button
 - One persistent JSON canvas shared across workspaces
 - Editing is locked to the workspace where HyprInk was toggled on
@@ -102,11 +104,12 @@ BlackBackgroundColor = #000000
 [controls]
 DrawButton = left
 DeleteButton = middle
+ResizeButton = right
 DeleteDistance = 14
 
 [drawing]
 StylusSize = 4
-StylusColor = #ff3355
+StylusColor = #ffffff
 
 [notes]
 Font = monospace
