@@ -10,6 +10,6 @@ pkgbase = hyprink
 	depends = gtk-layer-shell
 	depends = jsoncpp
 	source = hyprink-1.0.tar.gz::https://github.com/capekk23/HyprInk/archive/refs/tags/v1.0.tar.gz
-	sha256sums = ec91b72f9641f97aaae647a153fde317817b8d1186bb18e13343bf1addfe049b
+	sha256sums = f02f7b62258ccf91bbeaaaeb1ed2202e14665ab4c9f5af9d36c4c4b7db1f0ed2
 
 pkgname = hyprink

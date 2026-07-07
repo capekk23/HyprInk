@@ -10,7 +10,7 @@ license=('MIT')
 depends=('gtkmm3' 'gtk-layer-shell' 'jsoncpp')
 makedepends=('cmake')
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('ec91b72f9641f97aaae647a153fde317817b8d1186bb18e13343bf1addfe049b')
+sha256sums=('f02f7b62258ccf91bbeaaaeb1ed2202e14665ab4c9f5af9d36c4c4b7db1f0ed2')
 
 build() {
   cmake -S "HyprInk-${pkgver}" -B build \
