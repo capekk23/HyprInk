@@ -31,20 +31,49 @@ Target workflow:
 - Double-click a note to edit its text.
 - Keep all scribbles and notes persistent.
 
+## Current Features
+
+- C++ GTK/layer-shell app
+- `hyprink --toggle` single-instance toggle
+- Mouse scribbling with left click + drag
+- Click empty desktop overlay space to create a text note
+- Drag notes by grabbing inside their rectangle
+- Double-click notes to edit
+- Persistent JSON storage per active Hyprland workspace
+- Configurable background, layer, stylus, and note styling
+
 ## Planned Features
 
-- Mouse scribbling
-- Text notes on the desktop
-- Movable note rectangles
-- Editable notes on double click
-- Persistent storage
-- Per-project configuration via `Project.conf`
-- Background modes:
-  - transparent
-  - blur
-  - black
-- Configurable stylus size
-- Configurable stylus color
+- Better text cursor and selection behavior
+- Undo/redo
+- Eraser mode
+- Multiple monitors
+- Built-in install helper
+
+## Build
+
+Dependencies:
+
+- C++17 compiler
+- CMake
+- `gtkmm-3.0`
+- `gtk-layer-shell`
+- `jsoncpp`
+
+Build:
+
+```sh
+cmake -S . -B build
+cmake --build build
+```
+
+Run:
+
+```sh
+./build/hyprink --toggle
+```
+
+Press `Esc` or `Ctrl+Enter` to finish editing a note.
 
 ## Config
 
@@ -60,6 +89,9 @@ mode = transparent
 black_color = #000000
 blur = true
 
+[window]
+layer = overlay
+
 [stylus]
 size = 4
 color = #ff3355
@@ -72,8 +104,10 @@ background_color = #00000099
 border_color = #ffffffcc
 border_width = 1
 padding = 8
+width = 260
+min_height = 64
 ```
 
 ## Status
 
-Planning and scaffold stage.
+First runnable prototype.
