@@ -1,0 +1,15 @@
+pkgbase = hyprink
+	pkgdesc = Persistent desktop notes and scribbles for Hyprland
+	pkgver = 1.0
+	pkgrel = 1
+	url = https://github.com/capekk23/HyprInk
+	arch = x86_64
+	license = MIT
+	makedepends = cmake
+	depends = gtkmm3
+	depends = gtk-layer-shell
+	depends = jsoncpp
+	source = hyprink-1.0.tar.gz::https://github.com/capekk23/HyprInk/archive/refs/tags/v1.0.tar.gz
+	sha256sums = ec91b72f9641f97aaae647a153fde317817b8d1186bb18e13343bf1addfe049b
+
+pkgname = hyprink

@@ -1134,9 +1134,9 @@ static bool send_toggle() {
   }
 
   const char command[] = "toggle\n";
-  write(fd, command, sizeof(command) - 1);
+  const ssize_t written = write(fd, command, sizeof(command) - 1);
   close(fd);
-  return true;
+  return written == static_cast<ssize_t>(sizeof(command) - 1);
 }
 
 int main(int argc, char** argv) {
