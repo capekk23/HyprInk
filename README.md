@@ -98,7 +98,7 @@ black_color = #000000
 blur = true
 
 [window]
-layer = overlay
+layer = bottom
 
 [stylus]
 size = 4

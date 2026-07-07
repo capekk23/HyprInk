@@ -40,7 +40,7 @@ struct Config {
   std::string storage_path = "~/.local/share/hyprink";
   std::string background_mode = "transparent";
   Color black_color{0.0, 0.0, 0.0, 1.0};
-  std::string layer = "overlay";
+  std::string layer = "bottom";
   int stylus_size = 4;
   Color stylus_color{1.0, 0.2, 0.33, 1.0};
   std::string font = "monospace";
@@ -364,6 +364,12 @@ public:
 
     storage_dir_ = expand_user(config_.storage_path);
     load_workspace(active_workspace_key());
+    Glib::signal_timeout().connect([this] {
+      if (is_visible()) {
+        load_workspace(active_workspace_key());
+      }
+      return true;
+    }, 500);
     show_all();
   }
 
@@ -395,16 +401,11 @@ protected:
     cr->set_line_join(Cairo::LINE_JOIN_ROUND);
 
     for (const auto& stroke : strokes_) {
-      if (stroke.points.size() < 2) {
-        continue;
-      }
-      set_source(cr, stroke.color);
-      cr->set_line_width(stroke.size);
-      cr->move_to(stroke.points.front().x, stroke.points.front().y);
-      for (size_t i = 1; i < stroke.points.size(); ++i) {
-        cr->line_to(stroke.points[i].x, stroke.points[i].y);
-      }
-      cr->stroke();
+      draw_stroke(cr, stroke);
+    }
+
+    if (drawing_) {
+      draw_stroke(cr, current_stroke_);
     }
 
     for (size_t i = 0; i < notes_.size(); ++i) {
@@ -623,6 +624,20 @@ private:
     cr->move_to(note.x + config_.padding, note.y + config_.padding);
     set_source(cr, config_.text_color);
     layout->show_in_cairo_context(cr);
+  }
+
+  void draw_stroke(const Cairo::RefPtr<Cairo::Context>& cr, const Stroke& stroke) {
+    if (stroke.points.size() < 2) {
+      return;
+    }
+
+    set_source(cr, stroke.color);
+    cr->set_line_width(stroke.size);
+    cr->move_to(stroke.points.front().x, stroke.points.front().y);
+    for (size_t i = 1; i < stroke.points.size(); ++i) {
+      cr->line_to(stroke.points[i].x, stroke.points[i].y);
+    }
+    cr->stroke();
   }
 
   void update_note_size(Note& note) {
