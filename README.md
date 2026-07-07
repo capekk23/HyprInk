@@ -42,7 +42,8 @@ Target workflow:
 - Drag notes by grabbing inside their rectangle
 - Double-click notes to edit
 - Delete notes or full strokes with the configured delete button
-- Persistent JSON storage per active Hyprland workspace
+- One persistent JSON canvas shared across workspaces
+- Editing is locked to the workspace where HyprInk was toggled on
 - Configurable background, layer, controls, stylus, and note styling
 
 ## Planned Features

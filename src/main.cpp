@@ -332,15 +332,6 @@ static Color color_from_json(const Json::Value& value, Color fallback) {
   };
 }
 
-static std::string sanitize_key(std::string key) {
-  for (auto& c : key) {
-    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-') {
-      c = '_';
-    }
-  }
-  return key.empty() ? "default" : key;
-}
-
 static std::string active_workspace_key() {
   FILE* pipe = popen("hyprctl activeworkspace -j 2>/dev/null", "r");
   if (!pipe) {
@@ -407,10 +398,12 @@ public:
     gtk_layer_set_anchor(gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
 
     storage_dir_ = expand_user(config_.storage_path);
-    load_workspace(active_workspace_key());
+    current_workspace_key_ = active_workspace_key();
+    activation_workspace_key_ = current_workspace_key_;
+    load_state();
     Glib::signal_timeout().connect([this] {
       if (is_visible()) {
-        load_workspace(active_workspace_key());
+        current_workspace_key_ = active_workspace_key();
       }
       return true;
     }, 500);
@@ -424,7 +417,8 @@ public:
       return;
     }
 
-    load_workspace(active_workspace_key());
+    current_workspace_key_ = active_workspace_key();
+    activation_workspace_key_ = current_workspace_key_;
     show_all();
     present();
     grab_focus();
@@ -460,6 +454,11 @@ protected:
   }
 
   bool on_button_press_event(GdkEventButton* event) override {
+    if (!can_edit_current_workspace()) {
+      cancel_pointer_actions();
+      return true;
+    }
+
     if (event->button == config_.delete_button) {
       delete_at(event->x, event->y);
       return true;
@@ -501,6 +500,11 @@ protected:
   }
 
   bool on_motion_notify_event(GdkEventMotion* event) override {
+    if (!can_edit_current_workspace()) {
+      cancel_pointer_actions();
+      return true;
+    }
+
     if (dragging_note_ >= 0) {
       notes_[dragging_note_].x = event->x - drag_dx_;
       notes_[dragging_note_].y = event->y - drag_dy_;
@@ -529,6 +533,11 @@ protected:
   }
 
   bool on_button_release_event(GdkEventButton* event) override {
+    if (!can_edit_current_workspace()) {
+      cancel_pointer_actions();
+      return true;
+    }
+
     if (event->button != config_.draw_button) {
       return false;
     }
@@ -564,6 +573,10 @@ protected:
   }
 
   bool on_key_press_event(GdkEventKey* event) override {
+    if (!can_edit_current_workspace()) {
+      return true;
+    }
+
     if (editing_note_ < 0 || editing_note_ >= static_cast<int>(notes_.size())) {
       if ((event->state & GDK_CONTROL_MASK) && event->keyval == GDK_KEY_q) {
         hide();
@@ -781,25 +794,30 @@ private:
     note.y = std::clamp(note.y, 0.0, std::max(0.0, static_cast<double>(height) - note.h));
   }
 
-  fs::path workspace_file() const {
-    return fs::path(storage_dir_) / (sanitize_key(workspace_key_) + ".json");
+  bool can_edit_current_workspace() {
+    current_workspace_key_ = active_workspace_key();
+    return current_workspace_key_ == activation_workspace_key_;
   }
 
-  void load_workspace(const std::string& workspace_key) {
-    if (workspace_key_ == workspace_key && loaded_) {
+  void cancel_pointer_actions() {
+    drawing_ = false;
+    dragging_note_ = -1;
+  }
+
+  fs::path state_file() const {
+    return fs::path(storage_dir_) / "state.json";
+  }
+
+  void load_state() {
+    if (loaded_) {
       return;
     }
 
-    if (loaded_) {
-      save();
-    }
-
-    workspace_key_ = workspace_key;
     strokes_.clear();
     notes_.clear();
     loaded_ = true;
 
-    std::ifstream file(workspace_file());
+    std::ifstream file(state_file());
     if (!file.good()) {
       queue_draw();
       return;
@@ -852,7 +870,7 @@ private:
     }
 
     Json::Value root;
-    root["workspace"] = workspace_key_;
+    root["version"] = 1;
 
     for (const auto& stroke : strokes_) {
       Json::Value value;
@@ -877,7 +895,7 @@ private:
       root["notes"].append(value);
     }
 
-    std::ofstream file(workspace_file());
+    std::ofstream file(state_file());
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "  ";
     file << Json::writeString(builder, root);
@@ -885,7 +903,8 @@ private:
 
   Config config_;
   std::string storage_dir_;
-  std::string workspace_key_;
+  std::string current_workspace_key_;
+  std::string activation_workspace_key_;
   bool loaded_ = false;
 
   std::vector<Stroke> strokes_;
