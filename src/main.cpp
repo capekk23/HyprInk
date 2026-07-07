@@ -933,6 +933,7 @@ int main(int argc, char** argv) {
   }
 
   auto app = Gtk::Application::create("dev.capekk23.hyprink", Gio::APPLICATION_NON_UNIQUE);
+  app->hold();
   auto window = std::make_unique<HyprInkWindow>(load_config(config_path));
   IpcServer ipc(*window);
   ipc.start();
