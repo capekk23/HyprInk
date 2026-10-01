@@ -18,6 +18,9 @@ public:
     auto key=[&](guint value,guint modifiers=0) {
       GdkEventKey e{}; e.type=GDK_KEY_PRESS; e.keyval=value; e.state=modifiers; w.on_key_press_event(&e);
     };
+    check(w.state_.notes.size()==1 && w.state_.notes[0].x==800 && w.state_.notes[0].w==260,
+          "Startup allocation changed saved note geometry");
+    w.state_={};
     w.set_edit_mode(true);
     press(180,180); release(180,180);
     check(w.editing_note_==0 && w.state_.notes.size()==1,"New blank note was removed");
@@ -60,6 +63,8 @@ int main() {
     app->register_application(); app->signal_activate().connect([] {}); app->hold();
     Config config; config.storage_path=directory.string();
     const auto display=Gdk::Display::get_default();
+    hyprink::State seed; seed.notes={{800,150,260,64,"Loaded note"}};
+    hyprink::atomic_write(directory/"state.json",hyprink::serialize(seed));
     HyprInkWindow window(config,display->get_monitor(0),directory/"state.json"); app->add_window(window);
     int result=0;
     Glib::signal_timeout().connect([&] {

@@ -330,6 +330,7 @@ public:
     gtk_layer_init_for_window(gobj());
     gtk_layer_set_namespace(gobj(),"hyprink");
     gtk_layer_set_monitor(gobj(),monitor->gobj());
+    monitor_=monitor;
     gtk_layer_set_exclusive_zone(gobj(),-1);
     for (auto edge:{GTK_LAYER_SHELL_EDGE_LEFT, GTK_LAYER_SHELL_EDGE_RIGHT,
                    GTK_LAYER_SHELL_EDGE_TOP, GTK_LAYER_SHELL_EDGE_BOTTOM})
@@ -375,7 +376,7 @@ protected:
     Gtk::Window::on_size_allocate(allocation);
     // Do not rescale the saved model: keep coordinates in logical pixels. Clamp
     // notes only once the compositor has supplied the actual monitor size.
-    if (allocation.get_width()>1 && allocation.get_height()>1)
+    if (get_mapped() && allocation.get_width()>1 && allocation.get_height()>1)
       for (auto& note:state_.notes) clamp_note(note);
   }
   bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override {
@@ -547,6 +548,7 @@ private:
     }
   }
   void draw_note(const Cairo::RefPtr<Cairo::Context>& cr, Note& note, bool editing) {
+    update_note_size(note);
     constexpr double radius = 4.0;
     const double x = note.x;
     const double y = note.y;
@@ -665,7 +667,8 @@ private:
   }
 
   void clamp_note(Note& n) {
-    const double w=std::max(1,get_allocated_width()), h=std::max(1,get_allocated_height());
+    Gdk::Rectangle geometry; monitor_->get_geometry(geometry);
+    const double w=std::max(1,geometry.get_width()), h=std::max(1,geometry.get_height());
     if (w<=1 || h<=1) return;
     n.w=std::clamp(n.w,32.0,std::max(32.0,w)); n.h=std::clamp(n.h,16.0,std::max(16.0,h));
     n.x=std::clamp(n.x,0.0,std::max(0.0,w-n.w)); n.y=std::clamp(n.y,0.0,std::max(0.0,h-n.h));
@@ -676,6 +679,7 @@ private:
     else return;
     save(); queue_draw();
   }
+  Glib::RefPtr<Gdk::Monitor> monitor_;
   Config config_; hyprink::Store store_; hyprink::State state_; hyprink::History history_;
   std::optional<hyprink::State> pointer_before_;
   GtkIMContext* im_=nullptr; sigc::connection cursor_timer_;
