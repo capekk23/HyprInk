@@ -1,0 +1,31 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build and headless Wayland dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build pkg-config libgtkmm-3.0-dev libgtk-layer-shell-dev libjsoncpp-dev sway grim ripgrep
+      - name: Build
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build
+      - name: Core regressions
+        run: ctest --test-dir build -R '^core$' --output-on-failure
+      - name: Wayland scenarios
+        run: dbus-run-session -- bash tests/wayland-smoke.sh build
+      - name: Check installation
+        run: DESTDIR="$PWD/build/stage" cmake --install build --prefix /usr
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hyprink-linux-preview
+          path: |
+            build/preview.png
+            build/stage/
