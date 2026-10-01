@@ -6,6 +6,10 @@ and the physical-desktop checks below have been recorded.
 
 ## Automated
 
+Passed on Ubuntu 24.04 / GTK 3.24.41 / gtk-layer-shell 0.8.2, 2026-10-01.
+[Verified CI run](https://github.com/capekk23/HyprInk/actions/runs/36841133973).
+The captured preview was visually checked for note sizing and Unicode rendering.
+
 - C++17 build with compiler warnings enabled.
 - Core tests: UTF-8/graphemes, history invalidation/bounds, JSON round-trip,
   actively edited blank notes, atomic writes, 0600 permissions, previous-state

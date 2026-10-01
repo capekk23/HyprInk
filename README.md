@@ -3,6 +3,8 @@
 Persistent notes and freehand drawing on your Hyprland desktop. A small C++17
 application using GTK3 and Wayland layer-shell; MIT licensed.
 
+![HyprInk editing a Unicode note and a drawing in a headless Wayland session](docs/preview.png)
+
 ## What you can do
 
 - Leave notes and drawings visible while mouse clicks and keyboard input pass
